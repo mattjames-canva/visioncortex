@@ -18,6 +18,7 @@ pub struct Runner {
     image: ColorImage,
 }
 
+#[non_exhaustive]
 pub struct RunnerConfig {
     pub diagonal: bool,
     pub hierarchical: u32,
