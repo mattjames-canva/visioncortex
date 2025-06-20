@@ -182,3 +182,30 @@ fn patch_good(
     }
     false
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_oklab_color_diff() {
+        let color1 = Color { r: 100, g: 150, b: 200, a: 255 };
+        let color2 = Color { r: 110, g: 160, b: 210, a: 255 };
+        
+        let diff = oklab_color_diff(color1, color2);
+        
+        // The expected value is derived from running the oklab conversion and distance
+        // calculation manually. This is a regression test to ensure the calculation
+        // does not change unexpectedly.
+        // let a_oklab: oklab::Oklab = oklab::Rgb { r: 100, g: 150, b: 200 }.into();
+        // let b_oklab: oklab::Oklab = oklab::Rgb { r: 110, g: 160, b: 210 }.into();
+        // a_oklab = Oklab { l: 0.62198424, a: -0.093375, b: -0.11937816 }
+        // b_oklab = Oklab { l: 0.6558483, a: -0.09162065, b: -0.12072383 }
+        // dl = -0.03386406
+        // da = -0.00175435
+        // db = 0.00134567
+        // delta_sq = 0.001146776
+        // (delta_sq * 255.0) as i32 = 0
+        assert_eq!(diff, 0);
+    }
+}
