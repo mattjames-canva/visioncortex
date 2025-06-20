@@ -1,6 +1,18 @@
 use crate::{Color, ColorImage, ColorI32};
 use super::*;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ColorSpace {
+    RGB,
+    Oklab,
+}
+
+impl Default for ColorSpace {
+    fn default() -> Self {
+        ColorSpace::RGB
+    }
+}
+
 pub struct Runner {
     config: RunnerConfig,
     image: ColorImage,
@@ -18,6 +30,7 @@ pub struct RunnerConfig {
     pub hollow_neighbours: usize,
     pub key_color: Color,
     pub keying_action: KeyingAction,
+    pub color_space: ColorSpace,
 }
 
 impl Default for RunnerConfig {
@@ -34,6 +47,7 @@ impl Default for RunnerConfig {
             hollow_neighbours: 1,
             key_color: Color::default(),
             keying_action: KeyingAction::default(),
+            color_space: ColorSpace::default(),
         }
     }
 }
@@ -73,9 +87,15 @@ impl Runner {
             hollow_neighbours,
             key_color,
             keying_action,
+            color_space,
         } = self.config;
 
         assert!(is_same_color_a < 8);
+
+        let diff_fn = match color_space {
+            ColorSpace::RGB => color_diff,
+            ColorSpace::Oklab => oklab_color_diff,
+        };
 
         Builder::new()
             .from(self.image)
@@ -87,7 +107,7 @@ impl Runner {
             .same(move |a: Color, b: Color| {
                 color_same(a, b, is_same_color_a, is_same_color_b)
             })
-            .diff(color_diff)
+            .diff(diff_fn)
             .deepen(move |internal: &BuilderImpl, patch: &Cluster, neighbours: &[NeighbourInfo]| {
                 patch_good(internal, patch, good_min_area, good_max_area) &&
                 neighbours[0].diff > deepen_diff
@@ -111,6 +131,24 @@ pub fn color_diff(a: Color, b: Color) -> i32 {
     let a = ColorI32::new(&a);
     let b = ColorI32::new(&b);
     (a.r - b.r).abs() + (a.g - b.g).abs() + (a.b - b.b).abs()
+}
+
+pub fn oklab_color_diff(a: Color, b: Color) -> i32 {
+    let a_oklab: oklab::Oklab = oklab::Rgb { r: a.r, g: a.g, b: a.b }.into();
+    let b_oklab: oklab::Oklab = oklab::Rgb { r: b.r, g: b.g, b: b.b }.into();
+
+    let dl = a_oklab.l - b_oklab.l;
+    let da = a_oklab.a - b_oklab.a;
+    let db = a_oklab.b - b_oklab.b;
+    
+    // Squared Euclidean distance
+    let delta_sq = dl * dl + da * da + db * db;
+
+    // The Oklab values are floats. `l` is in [0, 1], `a` and `b` are roughly in [-0.4, 0.4].
+    // The squared difference will be small.
+    // Let's scale it up to be in a similar range to color_diff.
+    // A simple scaling factor should work for comparison purposes.
+    (delta_sq * 255.0) as i32
 }
 
 pub fn color_same(a: Color, b: Color, shift: i32, thres: i32) -> bool {

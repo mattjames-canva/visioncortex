@@ -13,8 +13,12 @@ exclude = [
     "docs/*",
 ]
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 bit-vec = "0.6"
 log = "0.4"
 num-traits = "0.2"
 flo_curves = "0.3"
+oklab = "1.1.2"
